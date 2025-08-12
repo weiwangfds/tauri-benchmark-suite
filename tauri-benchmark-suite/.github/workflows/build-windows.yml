@@ -1,0 +1,69 @@
+name: Build Windows Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # 当推送版本标签时触发
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Tauri Benchmark Suite v${{ github.ref_name }}'
+          releaseBody: |
+            ## 🚀 Tauri Benchmark Suite Release
+            
+            ### 新功能
+            - 完整的 Tauri 性能基准测试套件
+            - 系统信息收集和分析
+            - IPC 性能测试
+            - 实时结果展示
+            
+            ### 系统要求
+            - Windows 10/11 (x64)
+            
+            ### 安装说明
+            1. 下载对应的安装包
+            2. 运行安装程序
+            3. 启动应用开始性能测试
+            
+            ---
+            
+            **完整更新日志**: https://github.com/${{ github.repository }}/compare/${{ github.event.before }}...${{ github.sha }}
+          releaseDraft: false
+          prerelease: false
+          includeDebug: false
+          includeRelease: true
